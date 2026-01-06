@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>অনলাইন কুইজ পরীক্ষা</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { 
+            font-family: "Hind Siliguri", sans-serif; 
+            background-color: #f4f4f9; 
+            color: #333; 
+            padding: 20px; 
+            padding-top: 80px; 
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: #fff; 
+            padding: 30px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
+        }
+        h1 { color: #4a90e2; text-align: center; border-bottom: 2px solid #4a90e2; padding-bottom: 10px; }
+        
+        /* নাম ইনপুট বক্স */
+        .user-info {
+            background: #eef5ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #4a90e2;
+            text-align: center;
+        }
+        .user-info input {
+            width: 80%;
+            padding: 12px;
+            margin-top: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        #timer-display { 
+            position: fixed; top: 0; left: 0; width: 100%; z-index: 1000; text-align: center; font-size: 1.5em; font-weight: bold; color: #fff; background-color: #d9534f; padding: 10px 0; margin: 0; border-radius: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: none;
+        }
+        #timer-message { text-align: center; color: #f0ad4e; font-size: 1.1em; font-weight: bold; margin-top: 15px; margin-bottom: 20px; }
+        .question-box { margin-bottom: 25px; padding: 15px; border: 1px solid #ddd; border-radius: 6px; background-color: #f9f9ff; }
+        .question-text { font-size: 1.1em; font-weight: bold; margin-bottom: 15px; color: #1a1a1a; }
+        .options label { display: block; margin-bottom: 10px; padding: 8px; cursor: pointer; border-radius: 4px; transition: background-color 0.3s; }
+        .options label:hover { background-color: #e6f0ff; }
+        button { display: block; width: 100%; padding: 15px; background-color: #50b355; color: white; border: none; border-radius: 6px; font-size: 1.1em; cursor: pointer; margin-top: 20px; transition: background-color 0.3s; }
+        button:hover { background-color: #409245; }
+        #restart-btn { background-color: #007bff; margin-top: 10px; }
+        #result-box { text-align: center; font-size: 1.5em; margin-top: 30px; padding: 20px; border: 2px solid #f99015; border-radius: 8px; background-color: #fffaf0; display: none; }
+        .score { font-size: 2em; color: #28a745; font-weight: bold; }
+        .feedback { margin-top: 10px; padding: 10px; border-radius: 4px; font-weight: bold; }
+        .correct { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .wrong { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .correct-option { background-color: #c3e6cb !important; }
+        .wrong-selection { background-color: #f0c3c6; }
+        #surprise-box { display: none; padding: 25px; border: 5px solid #ffcc00; border-radius: 15px; background-color: #fffacd; margin-top: 20px; text-align: center; }
+        .surprise-message { font-size: 1.4em; color: #d9534f; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 id="quiz-header">অনলাইন MCQ পরীক্ষা</h1>
+    
+    <div id="timer-display">সময়: <span id="time-left">--:--</span></div>
+
+    <div id="user-info-section" class="user-info">
+        <label for="student-name"><strong>আপনার নাম লিখুন:</strong></label><br>
+        <input type="text" id="student-name" placeholder="পুরো নাম এখানে লিখুন..." required>
+    </div>
+    
+    <div id="timer-message"></div>
+    
+    <form id="quiz-form"></form>
+    <button id="submit-btn" onclick="submitQuiz()">পরীক্ষা শেষ ও ফলাফল দেখুন</button>
+    
+    <div id="result-box"></div>
+    
+    <div id="surprise-container" style="text-align: center; margin-top: 30px;">
+        <button id="surprise-btn" onclick="openSurpriseBox()" style="background-color: #f99015; width: 60%; display: none;">
+            🎁 বিশেষ বার্তা দেখতে ক্লিক করুন 🎁
+        </button>
+        <div id="surprise-box">
+            <span id="surprise-text" class="surprise-message"></span>
+        </div>
+        <button id="restart-btn" onclick="restartQuiz()" style="width: 60%; display: none;">
+            আবার পরীক্ষা শুরু করুন
+        </button>
+    </div>
+</div>
+
+<script>
+    // আপনার দেওয়া Google Script URL
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbySBzP2uYpNCMC4zaI5Wht_9dv2VD5UoIOLOaO6mSS6fq5KCDnnlEVx455sldAr3VpncA/exec";
+
+    const examinerName = "MD SHAMIM HASAN";
+    const motivationMessage = "সাম্প্রতিক বিষয়ের MCQ from current affairs - 2026 (january)"; 
+    const examDurationMinutes = 50;
+    const timeUpMessage = "সময় কিন্তু শেষ! তুই এখন বাড়তি সময়ে পরীক্ষা দিচ্ছিস।";
+    
+    let timerInterval;
+    let startTime; 
+
+    const feedbackTiers = [
+        { min: 81, max: 100, message: "তোকে আর ঠ্যাকায় কোন শালা!" },
+        { min: 61, max: 80, message: "congratulations! you are now a teacher! " },
+        { min: 41, max: 60, message: "তুই দারুন করেছিস, শুধু রিভিশন চালিয়ে যা " },
+        { min: 31, max: 40, message: "একটু পরিশ্রম এর বিনিময়ে রঙ্গিন জীবন পেতে চলেছেন! " },
+        { min: 21, max: 30, message: "দ্যাখ ভাই, তুই তোর সেই মলিন মায়ের মুখটাকে উজ্জ্বল করবি না!..." },
+        { min: 1, max: 20, message: "RESTART!!! Try again! Fail again!" },
+        { min: 0, max: 0, message: "হাজার চেষ্টা সত্ত্বেও ০। হাল ছেড়ো না।" }
+    ];
+
+    const questions = [
+  { "q": "১. ত্রয়োদশ জাতীয় সংসদ নির্বাচন ও গণভোট অনুষ্ঠিত হবে কবে?", "options": ["১ ফেব্রুয়ারি ২০২৫", "৫ ফেব্রুয়ারি ২০২৫", "৮ ফেব্রুয়ারি ২০২৫", "১২ ফেব্রুয়ারি ২০২৫"], "answerIndex": 3, "category": "বাংলাদেশ" },
+  { "q": "২. 'গণভোট অধ্যাদেশ, ২০২৫' জারি করা হয় কবে?", "options": ["২৩ নভেম্বর ২০২৫", "২৪ নভেম্বর ২০২৫", "২৫ নভেম্বর ২০২৫", "২৬ নভেম্বর ২০২৫"], "answerIndex": 2, "category": "বাংলাদেশ" },
+  { "q": "৩. 'সুপ্রীম কোর্ট সচিবালয় অধ্যাদেশ, ২০২৫' জারি করা হয় কবে?", "options": ["২৯ নভেম্বর ২০২৫", "৩০ নভেম্বর ২০২৫", "১ ডিসেম্বর ২০২৫", "৩ ডিসেম্বর ২০২৫"], "answerIndex": 1, "category": "বাংলাদেশ" },
+  { "q": "৪. বাংলাদেশের প্রথম স্বয়ংক্রিয় (অটোমেটেড) জ্বালানি বিপণন ডিপোর কার্যক্রম শুরু হয় কোন জেলায়?", "options": ["চট্টগ্রাম", "বাগেরহাট", "চাঁদপুর", "কুমিল্লা"], "answerIndex": 3, "category": "বাংলাদেশ" },
+  { "q": "৫. 'ফেলানী অ্যাভিনিউ' কোথায় অবস্থিত?", "options": ["গুলশান", "আজিমপুর", "তেজগাঁও", "বনানী"], "answerIndex": 0, "category": "বাংলাদেশ" },
+  { "q": "৬. বর্তমানে দেশের মোট অধরা সাংস্কৃতিক ঐতিহ্য কতটি?", "options": ["৪টি", "৫টি", "৬টি", "৭টি"], "answerIndex": 2, "category": "বাংলাদেশ" },
+  { "q": "৭. দেশের ষষ্ঠ অধরা সাংস্কৃতিক ঐতিহ্য কোনটি?", "options": ["জামালপুরের নকশিকাঁথা", "সিলেটের মনিপুরি শাড়ি", "মিরপুরের কাতান শাড়ি", "টাঙ্গাইল শাড়ি বুনন শিল্প"], "answerIndex": 3, "category": "বাংলাদেশ" },
+  { "q": "৮. ১৫ ডিসেম্বর ২০২৫ দেশে আধুনিক ও দাপ্তরিক ব্যবহারের উপযোগী কোন বাংলা ফন্ট যাত্রা শুরু করে?", "options": ["আবু সাঈদ", "ওসমান হাদি", "জুলাই", "আগস্ট"], "answerIndex": 0, "category": "বাংলাদেশ" },
+  { "q": "৯. পুলিশ কমিশন অধ্যাদেশ, ২০২৫ অনুযায়ী পুলিশ কমিশন কত সদস্যবিশিষ্ট হবে?", "options": ["৪ জন", "৫ জন", "৬ জন", "৭ জন"], "answerIndex": 1, "category": "বাংলাদেশ" },
+  { "q": "১০. দেশে গুম প্রতিরোধ ও প্রতিকার ট্রাইব্যুনাল গঠন করা হয় কবে?", "options": ["৫ ডিসেম্বর ২০২৫", "১০ ডিসেম্বর ২০২৫", "১৫ ডিসেম্বর ২০২৫", "১৯ ডিসেম্বর ২০২৫"], "answerIndex": 2, "category": "বাংলাদেশ" },
+  { "q": "১১. বর্তমানে দেশে সরকারি কলেজের সংখ্যা কতটি?", "options": ["৭০৮টি", "৭২০টি", "৭৩২টি", "৭৫০টি"], "answerIndex": 0, "category": "বাংলাদেশ" },
+  { "q": "১২. ২০২৫ সালে চট্টগ্রাম বন্দর ব্যবহার করে কোন দেশের ট্রানজিট পণ্যের প্রথম পরীক্ষামূলক চালান খালাস হয়?", "options": ["নেপাল", "ভুটান", "পাকিস্তান", "আফগানিস্তান"], "answerIndex": 1, "category": "বাংলাদেশ" },
+  { "q": "১৩. বাংলাদেশের আশেপাশে অবস্থিত প্রধান টেকটোনিক প্লেটগুলোর অন্তর্ভুক্ত নয় কোনটি?", "options": ["ইউরেশীয় প্লেট", "বার্মা প্লেট", "ভারতীয় প্লেট", "প্রশান্ত মহাসাগরীয় প্লেট"], "answerIndex": 3, "category": "বাংলাদেশ" },
+  { "q": "১৪. সম্মিলিত ইসলামী ব্যাংক পিএলসি কবে তফসিলি ব্যাংকরূপে তালিকাভুক্ত হয়?", "options": ["১ ডিসেম্বর ২০২৫", "২ ডিসেম্বর ২০২৫", "৩ ডিসেম্বর ২০২৫", "৪ ডিসেম্বর ২০২৫"], "answerIndex": 0, "category": "বাংলাদেশ" },
+  { "q": "১৫. বর্তমানে তফসিলি ব্যাংকের সংখ্যা কয়টি?", "options": ["৫৮টি", "৬০টি", "৬২টি", "৬৩টি"], "answerIndex": 0, "category": "বাংলাদেশ" },
+  { "q": "১৬. বেসরকারি তফসিলি ব্যাংকের সংখ্যা কয়টি?", "options": ["৪৮টি", "৪৯টি", "৫০টি", "৫১টি"], "answerIndex": 0, "category": "বাংলাদেশ" },
+  { "q": "১৭. বর্তমানে দেশে শরিয়াহভিত্তিক ইসলামী ব্যাংকের সংখ্যা কতটি?", "options": ["৪টি", "৬টি", "৮টি", "১০টি"], "answerIndex": 1, "category": "বাংলাদেশ" },
+  { "q": "১৮. ইসলামী ধারার 'সম্মিলিত ইসলামী ব্যাংক পিএলসি' কার মালিকানাধীন?", "options": ["বিদেশি", "রাষ্ট্রীয়", "বেসরকারি", "সরকারি ও বেসরকারি"], "answerIndex": 2, "category": "বাংলাদেশ" },
+  { "q": "১৯. ২০২৫ সালে কতজন নারী বেগম রোকেয়া পদক লাভ করেন?", "options": ["২ জন", "৩ জন", "৪ জন", "৫ জন"], "answerIndex": 2, "category": "বাংলাদেশ" },
+  { "q": "২০. র‍্যাপিড সাপোর্ট ফোর্সেস (RSF) কোন দেশের আধা সামরিক বাহিনী?", "options": ["সুদান", "দক্ষিণ সুদান", "মালি", "নাইজার"], "answerIndex": 0, "category": "আন্তর্জাতিক" },
+  { "q": "২১. সুদান ও দক্ষিণ সুদানের বিরোধপূর্ণ 'আবেই' অঞ্চলে জাতিসংঘ পরিচালিত শান্তিরক্ষা মিশনের নাম কী?", "options": ["UNAMID", "UNMISS", "UNISFA", "MINUSCA"], "answerIndex": 2, "category": "আন্তর্জাতিক" },
+  { "q": "২২. ২০২৫ সালের অক্সফোর্ড ডিকশনারির বর্ষসেরা শব্দ কোনটি?", "options": ["parasocial", "vibe coding", "slop", "Rage bait"], "answerIndex": 3, "category": "আন্তর্জাতিক" },
+  { "q": "২৩. আকাশ থেকে আকাশে যুদ্ধের সক্ষমতা অর্জনকারী প্রথম মানববিহীন যুদ্ধবিমানের নাম কী?", "options": ["MQ-9 Reaper", "Bayraktar Akıncı", "X-59 Quesst", "Bayraktar KIZILELMA"], "answerIndex": 3, "category": "আন্তর্জাতিক" },
+  { "q": "২৪. Bayraktar KIZILELMA কোন দেশের মানববিহীন যুদ্ধবিমান?", "options": ["তুরস্ক", "ইসরায়েল", "ইরান", "রাশিয়া"], "answerIndex": 0, "category": "আন্তর্জাতিক" },
+  { "q": "২৫. গাজা ভূখণ্ডে ইসরায়েলের দাবি করা নতুন সীমানা কী নামে পরিচিত?", "options": ["Read Line", "Zero Line", "Yellow Zone", "Yellow Line"], "answerIndex": 3, "category": "আন্তর্জাতিক" },
+  { "q": "২৬. বিশ্বের প্রথম দেশ হিসেবে ১৬ বছরের কম বয়সিদের জন্য সামাজিক যোগাযোগ মাধ্যম নিষিদ্ধ করে কোন দেশ?", "options": ["জাপান", "সুইজারল্যান্ড", "অস্ট্রেলিয়া", "ফ্রান্স"], "answerIndex": 1, "category": "আন্তর্জাতিক" },
+  { "q": "২৭. বিশ্বের কোন দেশ প্রথম এক ডোজের ডেঙ্গুর টিকা অনুমোদন দেয়?", "options": ["ব্রাজিল", "বাংলাদেশ", "নাইজেরিয়া", "কাজাখস্তান"], "answerIndex": 0, "category": "আন্তর্জাতিক" },
+  { "q": "২৮. ২০২৬ সালের মার্কিন মধ্যবর্তী নির্বাচন কবে অনুষ্ঠিত হবে?", "options": ["৩ নভেম্বর", "৪ নভেম্বর", "৫ নভেম্বর", "৬ নভেম্বর"], "answerIndex": 0, "category": "আন্তর্জাতিক" },
+  { "q": "২৯. পাকিস্তানের প্রতিরক্ষা বাহিনীর প্রথম প্রধান কে?", "options": ["আয়াজ সাদিক", "শেহবাজ শরীফ", "আসিফ আলী জারদারি", "আসিম মুনির"], "answerIndex": 3, "category": "আন্তর্জাতিক" },
+  { "q": "৩০. ২৬ নভেম্বর ২০২৫ আফ্রিকার কোন দেশে সামরিক অভ্যুত্থান ঘটে?", "options": ["নাইজার", "তানজানিয়া", "মৌরিতানিয়া", "বুরকিনা ফাসো"], "answerIndex": 3, "category": "আন্তর্জাতিক" },
+  { "q": "৩১. ১ জানুয়ারি ২০২৬ ইউরোপীয় ইউনিয়নের (EU) কোন দেশ ইউরো মুদ্রা চালু করে?", "options": ["বুলগেরিয়া", "রোমানিয়া", "পোল্যান্ড", "সুইডেন"], "answerIndex": 0, "category": "আন্তর্জাতিক" },
+  { "q": "৩২. বর্তমানে ইউরোপীয় ইউনিয়নের (EU) কতটি দেশ ইউরো মুদ্রা গ্রহণ করেছে?", "options": ["২০টি", "২১টি", "২২টি", "২৩টি"], "answerIndex": 1, "category": "আন্তর্জাতিক" },
+  { "q": "৩৩. জাতিসংঘ ঘোষিত ২০২৬ সাল কোন বর্ষ?", "options": ["আন্তর্জাতিক রেঞ্জল্যান্ডস ও প্যাস্টোরালিস্ট বর্ষ", "আন্তর্জাতিক টেকসই উন্নয়নে স্বেচ্ছাসেবক বর্ষ", "আন্তর্জাতিক নারী কৃষক বর্ষ", "সবগুলো"], "answerIndex": 3, "category": "আন্তর্জাতিক" },
+  { "q": "৩৪. ২০২৬ সালের ওয়ার্ল্ড বুক ক্যাপিটাল কোনটি?", "options": ["স্ট্রাসবার্গ (ফ্রান্স)", "বৈরুত (লেবানন)", "রাবাত (মরক্কো)", "আক্রা (ঘানা)"], "answerIndex": 2, "category": "আন্তর্জাতিক" },
+  { "q": "৩৫. ১ জানুয়ারি ২০২৬ G7'র চেয়ারম্যান হিসেবে দায়িত্ব গ্রহণ করেন কে?", "options": ["ইমানুয়েল ম্যাক্রো (ফ্রান্স)", "জর্জিয়া মেলোনি (ইতালি)", "মার্ক কার্নি (কানাডা)", "সানে তাকাইচি (জাপান)"], "answerIndex": 0, "category": "সংস্থা প্রধান ও সদস্য" },
+  { "q": "৩৬. ১ জানুয়ারি ২০২৬ ডি-৮-এর পরবর্তী মহাসচিব হিসেবে দায়িত্ব গ্রহণ করেন কে?", "options": ["দিপো আলম (ইন্দোনেশিয়া)", "আয়হান কামেল (তুরস্ক)", "সোহেল মাহমুদ (পাকিস্তান)", "সৈয়দ আলী মোহাম্মদ মুসাভি (ইরান)"], "answerIndex": 2, "category": "সংস্থা প্রধান ও সদস্য" },
+  { "q": "৩৭. ২৭ নভেম্বর ২০২৫ ইন্টারপোলের প্রেসিডেন্ট হিসেবে দায়িত্ব গ্রহণ করেন কে?", "options": ["খুবুন হই (সিঙ্গাপুর)", "মেং হংওয়েই (চীন)", "আহমেদ নাসের আল-রাইসি (আরব আমিরাত)", "লুকাস ফিলিপ (ফ্রান্স)"], "answerIndex": 3, "category": "সংস্থা প্রধান ও সদস্য" },
+  { "q": "৩৮. ১ জানুয়ারি ২০২৬ জাতিসংঘের শরণার্থী বিষয়ক হাইকমিশনার দায়িত্ব গ্রহণ করেন কে?", "options": ["ফিলিপ্পো গ্রান্ডি", "বারহাম সালিহ", "শিগেরু ইশিবা", "ঋষি সুনাক"], "answerIndex": 1, "category": "সংস্থা প্রধান ও সদস্য" },
+  { "q": "৩৯. আন্তর্জাতিক শ্রম সংস্থার (ILO) ১১টি মৌলিক কনভেনশন অনুমোদনকারী এশীয় দেশ কোনটি?", "options": ["ভিয়েতনাম", "জাপান", "বাংলাদেশ", "ইরাক"], "answerIndex": 2, "category": "সংস্থা প্রধান ও সদস্য" },
+  { "q": "৪০. আন্তর্জাতিক নবায়নযোগ্য শক্তি সংস্থার (IRENA) বর্তমান সদস্য কত?", "options": ["১৬৮টি", "১৬৯টি", "১৭০টি", "১৭১টি"], "answerIndex": 3, "category": "সংস্থা প্রধান ও সদস্য" },
+  { "q": "৪১. ১৯ নভেম্বর ২০২৫ কোন দেশ IRENA'র ১৭১তম সদস্যপদ লাভ করে?", "options": ["হন্ডুরাস", "পাপুয়া নিউ গিনি", "গুয়াতেমালা", "তানজানিয়া"], "answerIndex": 1, "category": "সংস্থা প্রধান ও সদস্য" },
+  { "q": "৪২. ২ ফেব্রুয়ারি ২০২৬ কোন দেশ স্থায়ী সালিশ আদালতের (PCA) ১২৭তম সদস্য লাভ করবে?", "options": ["ইন্দোনেশিয়া", "ইউক্রেন", "সিরিয়া", "আর্জেন্টিনা"], "answerIndex": 0, "category": "সংস্থা প্রধান ও সদস্য" },
+  { "q": "৪৩. বিশ্বের কোন দেশে বাঘের বসবাস সবচেয়ে বেশি?", "options": ["নেপাল", "ইন্দোনেশিয়া", "রাশিয়া", "ভারত"], "answerIndex": 3, "category": "রিপোর্ট" },
+  { "q": "৪৪. বাঘের বসবাসে বাংলাদেশের অবস্থান বিশ্বের কততম?", "options": ["দ্বিতীয়", "পঞ্চম", "অষ্টম", "দশম"], "answerIndex": 2, "category": "রিপোর্ট" },
+  { "q": "৪৫. বিশ্বের কোন দেশে সর্বাধিক তেলের মজুত রয়েছে?", "options": ["সৌদি আরব", "ইরান", "যুক্তরাষ্ট্র", "ভেনিজুয়েলা"], "answerIndex": 3, "category": "রিপোর্ট" },
+  { "q": "৪৬. ২০৩০ সালে ২৪তম কমনওয়েলথ গেমস ভারতের কোথায় অনুষ্ঠিত হবে?", "options": ["নয়াদিল্লি", "কলকাতা", "আহমেদাবাদ", "চেন্নাই"], "answerIndex": 2, "category": "ক্রীড়াঙ্গন" },
+  { "q": "৪৭. ২০২৬ সালের বিশ্বকাপ ফুটবলের ফাইনাল অনুষ্ঠিত হবে কোন স্টেডিয়ামে?", "options": ["জিলেট স্টেডিয়াম", "মার্সিডিজ বেঞ্জ স্টেডিয়াম", "মেটলাইফ স্টেডিয়াম", "হার্ড রক স্টেডিয়াম"], "answerIndex": 2, "category": "ক্রীড়াঙ্গন" },
+  { "q": "৪৮. ২০২৫ সালের ফিফা দ্য বেস্টে বর্ষসেরা পুরুষ ফুটবলার কে?", "options": ["উসমান দেম্বেলে", "আশরাফ হাকিমি", "হ্যারি কেইন", "কিলিয়ান এমবাপ্পে"], "answerIndex": 0, "category": "ক্রীড়াঙ্গন" },
+  { "q": "৪৯. ২০২৫ সালের ফিফা অনূর্ধ্ব-১৭ বিশ্বকাপে চ্যাম্পিয়ন কোন দেশ?", "options": ["ব্রাজিল", "ইতালি", "অস্ট্রিয়া", "পর্তুগাল"], "answerIndex": 3, "category": "ক্রীড়াঙ্গন" },
+  { "q": "৫০. প্রথম ফিফা শান্তি পুরস্কার লাভ করেন কে?", "options": ["ডোনাল্ড ট্রাম্প", "জিয়ান্নি ইনফান্তিনো", "মুহাম্মদ ইউনূস", "আলেকজান্ডার চেফেরিন"], "answerIndex": 0, "category": "ক্রীড়াঙ্গন" }
+];
+
+    function formatTime(seconds) {
+        const min = Math.floor(seconds / 60);
+        const sec = seconds % 60;
+        return `${min < 10 ? '0' : ''}${min}:${sec < 10 ? '0' : ''}${sec}`;
+    }
+
+    function startTimer(duration) {
+        let timeRemaining = duration * 60;
+        startTime = new Date(); 
+        timerInterval = setInterval(() => {
+            timeRemaining--;
+            document.getElementById('time-left').textContent = formatTime(timeRemaining);
+            if (timeRemaining < 0) {
+                clearInterval(timerInterval);
+                document.getElementById('timer-display').style.backgroundColor = '#f0ad4e'; 
+                document.getElementById('timer-message').textContent = timeUpMessage;
+            }
+        }, 1000);
+    }
+
+    function loadQuiz() {
+        document.getElementById('quiz-header').innerHTML = `${motivationMessage} <br><span style="font-size: 0.7em;">(পরীক্ষক: ${examinerName})</span>`;
+        startTimer(examDurationMinutes);
+        const quizForm = document.getElementById('quiz-form');
+        questions.forEach((qData, index) => {
+            const qBox = document.createElement('div');
+            qBox.className = 'question-box';
+            qBox.id = `q-box-${index}`; 
+            qBox.innerHTML = `<div class="question-text">${qData.q}</div><div class="options" id="opt-${index}"></div>`;
+            quizForm.appendChild(qBox);
+            qData.options.forEach((option, optIndex) => {
+                const label = document.createElement('label');
+                label.id = `label-${index}-${optIndex}`;
+                label.innerHTML = `<input type="radio" name="question${index}" value="${optIndex}"> <span>${option}</span>`;
+                document.getElementById(`opt-${index}`).appendChild(label);
+            });
+        });
+    }
+
+    async function submitQuiz() {
+        const studentName = document.getElementById('student-name').value.trim();
+        if (!studentName) {
+            alert("পরীক্ষা শুরু করার আগে অবশ্যই নাম লিখতে হবে!");
+            window.scrollTo(0, 0);
+            return;
+        }
+
+        clearInterval(timerInterval);
+        const endTime = new Date();
+        const secondsTaken = Math.floor((endTime - startTime) / 1000);
+        const timeTakenFormatted = formatTime(secondsTaken);
+
+        let score = 0;
+        let categoryScores = {};
+        let totalCategories = {};
+
+        questions.forEach((qData, index) => {
+            categoryScores[qData.category] = (categoryScores[qData.category] || 0);
+            totalCategories[qData.category] = (totalCategories[qData.category] || 0) + 1;
+            
+            const selected = document.querySelector(`input[name="question${index}"]:checked`);
+            const qBox = document.getElementById(`q-box-${index}`);
+            const feedbackDiv = document.createElement('div');
+            feedbackDiv.className = 'feedback';
+            document.getElementById(`label-${index}-${qData.answerIndex}`).classList.add('correct-option');
+
+            if (selected) {
+                if (parseInt(selected.value) === qData.answerIndex) {
+                    score++;
+                    categoryScores[qData.category]++;
+                    feedbackDiv.classList.add('correct');
+                    feedbackDiv.textContent = '✅ সঠিক উত্তর।';
+                } else {
+                    selected.closest('label').classList.add('wrong-selection');
+                    feedbackDiv.classList.add('wrong');
+                    feedbackDiv.textContent = `❌ ভুল উত্তর। সঠিক: ${qData.options[qData.answerIndex]}`;
+                }
+            } else {
+                feedbackDiv.classList.add('wrong');
+                feedbackDiv.textContent = `⚠️ উত্তর দাওনি। সঠিক: ${qData.options[qData.answerIndex]}`;
+            }
+            qBox.appendChild(feedbackDiv);
+            document.querySelectorAll(`input[name="question${index}"]`).forEach(r => r.disabled = true);
+        });
+
+        const percentage = Math.round((score / questions.length) * 100);
+        
+        // রেজাল্ট দেখানো
+        const resultBox = document.getElementById('result-box');
+        resultBox.style.display = 'block';
+        resultBox.innerHTML = `
+            <h2>অভিনন্দন ${studentName}!</h2>
+            <p>আপনার স্কোর: <span class="score">${score}/${questions.length}</span> (${percentage}%)</p>
+            <p>সময় লেগেছে: ${timeTakenFormatted}</p>
+        `;
+
+        document.getElementById('submit-btn').style.display = 'none';
+        document.getElementById('user-info-section').style.display = 'none';
+        document.getElementById('surprise-btn').style.display = 'inline-block';
+        document.getElementById('restart-btn').style.display = 'inline-block';
+        document.getElementById('surprise-text').textContent = feedbackTiers.find(t => percentage >= t.min && percentage <= t.max).message;
+
+        // ডেটাবেসে পাঠানো
+        const payload = {
+            name: studentName,
+            score: score + "/" + questions.length,
+            percentage: percentage + "%",
+            timeTaken: timeTakenFormatted
+        };
+
+        fetch(SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        window.scrollTo(0, 0);
+    }
+
+    function openSurpriseBox() {
+        document.getElementById('surprise-box').style.display = 'block';
+        document.getElementById('surprise-btn').style.display = 'none';
+    }
+
+    function restartQuiz() { window.location.reload(); }
+    window.onload = loadQuiz;
+</script>
+</body>
+</html>
