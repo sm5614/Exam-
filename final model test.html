@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>অনলাইন কুইজ পরীক্ষা - ২০২৬</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+      window.MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          displayMath: [['$$', '$$'], ['\\[', '\\]']],
+          processEscapes: true
+        },
+        options: {
+          enableMenu: false
+        },
+        startup: {
+          ready: () => {
+            MathJax.startup.defaultReady();
+            MathJax.startup.promise.then(() => {
+              console.log('MathJax is loaded and initial typesetting is complete');
+            });
+          }
+        }
+      };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <style>
+        body { font-family: "Hind Siliguri", sans-serif; background-color: #f4f4f9; color: #333; padding: 20px; padding-top: 80px; }
+        .container { max-width: 850px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1 { color: #4a90e2; text-align: center; border-bottom: 2px solid #4a90e2; padding-bottom: 10px; margin-bottom: 20px; }
+        
+        #timer-display { position: fixed; top: 0; left: 0; width: 100%; z-index: 1000; text-align: center; font-size: 1.5em; font-weight: bold; color: #fff; background-color: #d9534f; padding: 10px 0; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        
+        .info-section { background: #eef6ff; padding: 20px; border-radius: 8px; margin-bottom: 30px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .info-section input { padding: 12px; border-radius: 5px; border: 1px solid #ccc; width: 90%; font-size: 16px; }
+
+        .question-box { margin-bottom: 25px; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background-color: #f9f9ff; }
+        .question-text { font-size: 1.2em; font-weight: bold; margin-bottom: 15px; color: #1a1a1a; line-height: 1.6; }
+        .options label { display: block; margin-bottom: 10px; padding: 12px; cursor: pointer; border-radius: 6px; border: 1px solid #eee; transition: 0.2s; background: #fff; }
+        .options label:hover { background-color: #e6f0ff; border-color: #4a90e2; }
+        
+        button { display: block; width: 100%; padding: 15px; background-color: #28a745; color: white; border: none; border-radius: 6px; font-size: 1.2em; cursor: pointer; margin-top: 20px; font-weight: bold; }
+        
+        #result-box { margin-top: 30px; padding: 25px; border: 2px solid #4a90e2; border-radius: 10px; background-color: #fff; display: none; text-align: center; }
+        .score-circle { font-size: 2.5em; color: #28a745; font-weight: bold; margin: 15px 0; }
+        
+        .feedback { margin-top: 12px; padding: 10px; border-radius: 5px; font-weight: bold; font-size: 0.95em; }
+        .correct { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .wrong { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .correct-option { background-color: #c3e6cb !important; border-color: #155724 !important; font-weight: bold; }
+        .wrong-selection { background-color: #f0c3c6 !important; border-color: #721c24 !important; }
+        
+        .cat-res { text-align: left; background: #f0f4f8; padding: 15px; border-radius: 8px; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div id="timer-display">সময় বাকি: <span id="time-left">--:--</span></div>
+
+<div class="container">
+    <h1 id="quiz-header">অনলাইন কুইজ পরীক্ষা - ২০২৬</h1>
+    
+    <div class="info-section">
+        <div><label><b>নাম (Name):</b></label><br><input type="text" id="name" placeholder="আপনার নাম লিখুন"></div>
+        <div><label><b>Primary Roll:</b></label><br><input type="text" id="roll" placeholder="রোল নম্বর"></div>
+        <div><label><b>জেলা (District):</b></label><br><input type="text" id="district" placeholder="জেলার নাম"></div>
+    </div>
+
+    <form id="quiz-form"></form>
+    
+    <button id="submit-btn" onclick="submitQuiz()">পরীক্ষা শেষ ও ফলাফল দেখুন</button>
+
+    <div id="result-box"></div>
+
+    <div style="text-align: center; margin-top: 20px;">
+        <button id="restart-btn" onclick="location.reload()" style="background-color: #007bff; width: 60%; display: none; margin: 0 auto;">আবার পরীক্ষা দিন</button>
+    </div>
+</div>
+
+<script>
+    // --- Configuration ---
+    const googleSheetUrl = "https://script.google.com/macros/s/AKfycbxRveqBzcH8jvr_oX-r13q4IZSSZy7ov0XXYqr2Il_KiZkAgd2yvjIi7CHCftyg6d3Z/exec";
+    const examDurationMinutes = 50; 
+    
+    const questions = [
+        { "q": "১. নিচের কোনটি থেকে বাংলা ভাষার জন্ম?", "options": ["কেন্দ্রম", "সংস্কৃত", "পূর্ব ভারতীয় প্রাকৃত", "দ্রাবিড়ীয়"], "answerIndex": 2, "category": "Bangla" },
+        { "q": "২. নিম্নবিবৃত স্বরধ্বনি কোনটি?", "options": ["আ", "ই", "এ", "অ্যা"], "answerIndex": 0, "category": "Bangla" },
+        { "q": "৩. Honesty is the best policy. The Underlined word is-", "options": ["Common Noun", "Proper Noun", "Abstract Noun", "Collective Noun"], "answerIndex": 2, "category": "English" },
+        { "q": "৪. This is the boy who won the prize. The Underlined word is-", "options": ["Relative", "Demonstrative", "Interrogative", "Indefinite"], "answerIndex": 0, "category": "English" },
+        { "q": "৫. আন্তর্জাতিক আদালত (ICJ) অবস্থিত-", "options": ["জেনেভা", "নিউইয়র্ক", "হেগ", "লন্ডন"], "answerIndex": 2, "category": "General Knowledge" },
+        { "q": "৬. ইসরাইল-ফিলিস্তিন সংঘাত অঞ্চল-", "options": ["কাশ্মীর", "গাজা উপত্যকা", "সিরিয়া", "লেবানন"], "answerIndex": 1, "category": "General Knowledge" },
+        { "q": "৭. 'She sings beautifully.' Here 'sing' is-", "options": ["Transitive", "Auxiliary", "Intransitive", "Linking"], "answerIndex": 2, "category": "English" },
+        { "q": "৮. রাশিয়ার মুদ্রা-", "options": ["ইউরো", "রুবল", "দিনার", "পাউন্ড"], "answerIndex": 1, "category": "General Knowledge" },
+        { "q": "৯. বাংলাদেশের প্রতিবেশী দেশ কয়টি?", "options": ["১টি", " ২টি", "৩টি", "৪টি"], "answerIndex": 1, "category": "General Knowledge" },
+        { "q": "১০. কোনটি শুদ্ধ বানান?", "options": ["प्रत्युদগমন", "প্রত্যুৎগমন", "প্রত্যুতগমন", "প্রত্যুবদগমণ"], "answerIndex": 1, "category": "Bangla" },
+        { "q": "১১. 'জলৌকা' শব্দের সন্ধি-বিচ্ছেদ কোনটি?", "options": ["জল + একা", "জল + ওকা", "জলো + ঐকা", "জল + ঐকা"], "answerIndex": 1, "category": "Bangla" },
+        { "q": "১২. $3(4x-6) = (3x+9)$ কে সমাধান করলে $x$ এর মান কত?", "options": ["2", "4", "3", "5"], "answerIndex": 2, "category": "General Math" },
+        { "q": "১৩. $p$ যদি $q$ এর চেয়ে বড় হয় তবে $\\frac{1}{p}$, $\\frac{1}{q}$ এর চেয়ে-", "options": ["বড়", "ছোট", "সমান", "অসমান"], "answerIndex": 1, "category": "General Math" },
+        { "q": "১৪. গর্ভাবস্থায় নিম্নের কোন ঔষধটি অত্যাবশ্যকীয়?", "options": ["ক্রিমির ঔষধ", "বমির ঔষধ", "প্যারাসিটামল", "Folic acid"], "answerIndex": 3, "category": "General Knowledge" },
+        { "q": "১৫. মেঘ, বৃষ্টিপাত, বজ্রপাত, ঝড় ইত্যাদি সৃষ্টি হয় বায়ুমণ্ডলের কোন স্তরে?", "options": ["স্ট্রাটোমণ্ডলে", "মেসোমণ্ডলে", "ট্রপোমণ্ডলে", "তাপমণ্ডলে"], "answerIndex": 2, "category": "General Knowledge" },
+        { "q": "১৬. 'জিজীবিষা' শব্দটি দিয়ে বোঝায়-", "options": ["জয়ের ইচ্ছা", "হত্যার ইচ্ছা", "বেঁচে থাকার ইচ্ছা", "শোনার ইচ্ছা"], "answerIndex": 2, "category": "Bangla" },
+        { "q": "১৭. 'বধূ' হচ্ছে-", "options": ["পুংলিঙ্গ", "স্ত্রীলিঙ্গ", "নিত্য স্ত্রীলিঙ্গ", "উভয়লিঙ্গ"], "answerIndex": 1, "category": "Bangla" },
+        { "q": "১৮. 'পুষ্প' শব্দের বহুবচন কোনটি?", "options": ["পুষ্পপাল", "পুষ্পদাম", "পুষ্পবৃন্দ", "পুষ্পবর্গ"], "answerIndex": 1, "category": "Bangla" },
+        { "q": "১৯. Sapling শব্দের অর্থ কী?", "options": ["ঔষধ", "নমুনা", "আদর করা", "চারাগাছ"], "answerIndex": 3, "category": "English" },
+        { "q": "২০. Which of the following is in plural form?", "options": ["analysis", "media", "datum", "radius"], "answerIndex": 1, "category": "English" },
+        { "q": "২১. Are you doing anything special ... the weekend?", "options": ["by", "in", "at", "on"], "answerIndex": 3, "category": "English" },
+        { "q": "২২. 'আমমোক্তার' শব্দে ব্যবহৃত 'আম' কোন বিদেশি উপসর্গ?", "options": ["ফারসি", "ইংরেজি", "আরবি", "হিন্দি"], "answerIndex": 2, "category": "Bangla" },
+        { "q": "২৩. একাধিক স্বাধীন বাক্যকে একটি বাক্যে লিখলে সেগুলোর মাঝখানে বসে-", "options": ["কোলন", "কমা", "সেমিকোলন", "কোলন-ড্যাশ"], "answerIndex": 2, "category": "Bangla" },
+        { "q": "২৪. বাংলায় মুসলিম শাসনের সূচনা হয় কার মাধ্যমে?", "options": ["আকবর", "বখতিয়ার খিলজি", "বাবর", "আলাউদ্দিন খিলজি"], "answerIndex": 1, "category": "General Knowledge" },
+        { "q": "২৫. পুণ্ড্রবর্ধনের রাজধানী কোথায় ছিল?", "options": ["মহাস্থানগড়", "পাহাড়পুর", "বিক্রমপুর", "ময়নামতি"], "answerIndex": 0, "category": "General Knowledge" },
+        { "q": "২৬. ভাষা আন্দোলনের প্রথম শহিদ-", "options": ["সালাম", "রফিক", "বরকত", "আবুল বরকত"], "answerIndex": 1, "category": "General Knowledge" },
+        { "q": "২৭. 'ত্রিভুজ' কোন সমাস?", "options": ["দ্বিগু সমাস", "বহুব্রীহি সমাস", "কর্মধারয় সমাস", "অব্যয়ীভাব সমাস"], "answerIndex": 0, "category": "Bangla" },
+        { "q": "২৮. 'পৃথিবীতে কে কাহার?' বাক্যে 'পৃথিবীতে' কোন কারকে কোন বিভক্তি?", "options": ["অপাদানে ৫মী", "কর্মে ২য়া", "অধিকরণে ৭মী", "করণে ৩য়া"], "answerIndex": 2, "category": "Bangla" },
+        { "q": "২৯. $O$ কেন্দ্র বিশিষ্ট বৃত্তে $D$ বিন্দু $AB$ জ্যা এর মধ্যবিন্দু হলে $\\angle ODB = ?$ ", "options": ["$45^\\circ$", "$60^\\circ$", "$90^\\circ$", "$180^\\circ$"], "answerIndex": 2, "category": "General Math" },
+        { "q": "৩০. বর্তমানে পুত্রের বয়স পিতার বয়সের এক তৃতীয়াংশ। ১২ বছর পর পুত্রের বয়স পিতার বয়সের অর্ধেক হবে। বর্তমানে পুত্রের বয়স কত?", "options": ["৮", "১০", "১২", "১৪"], "answerIndex": 2, "category": "General Math" },
+        { "q": "৩১. একটি ঘনকের সম্পূর্ণ পৃষ্ঠের ক্ষেত্রফল $48$ বর্গ মি. হলে কর্ণের দৈর্ঘ্য কত?", "options": ["$2\\sqrt{2}$", "$2\\sqrt{6}$", "$2\\sqrt{3}$", "$2$"], "answerIndex": 1, "category": "General Math" },
+        { "q": "৩২. একটি ট্রাপিজিয়ামের সমান্তরাল বাহু দুইটির দৈর্ঘ্য ৫ মিটার ও ৭ মিটার। এর ক্ষেত্রফল ৪৮ বর্গমিটার হলে, বাহু দুইটির মধ্যবর্তী লম্ব দূরত্ব কত?", "options": ["৬ মিটার", "৮ মিটার", "৯ মিটার", "১০ মিটার"], "answerIndex": 1, "category": "General Math" },
+        { "q": "৩৩. 'জেলে' এর প্রকৃতি-প্রত্যয় কী?", "options": ["জাল + ইয়া", "জেল + এ", "জাল + আ", "জলা + এ"], "answerIndex": 0, "category": "Bangla" },
+        { "q": "৩৪. 'Do not close the door.' The passive form is-", "options": ["The door should not be closed.", "Let the door not be closed.", "Do not be closed the door.", "The door is not closed."], "answerIndex": 1, "category": "English" },
+        { "q": "৩৫. You must work hard for success. (Compound Form)-", "options": ["Work hard for the success.", "Work hard to the success.", "Work hard and you will succeed.", "Work hard for success."], "answerIndex": 2, "category": "English" },
+        { "q": "৩৬. A basket of apples ... been sold.", "options": ["has", "have", "having", "haven't"], "answerIndex": 0, "category": "English" },
+        { "q": "৩৭. 'বিমান' কোন ভাষার শব্দ?", "options": ["তৎসম", "ফরাসি", "তদ্ভব", "পর্তুগিজ"], "answerIndex": 0, "category": "Bangla" },
+        { "q": "৩৮. 'তাজা মাছ' কোন বিশেষণ?", "options": ["অবস্থাবাচক", "গুণবাচক", "রূপবাচক", "অংশবাচক"], "answerIndex": 0, "category": "Bangla" },
+        { "q": "৩৯. সিমেন্ট তৈরির প্রধান কাঁচামাল কোনটি?", "options": ["$Ca(OCl)Na$", "$Na(OCl)Cl$", "$CaSO_4 \\cdot 2H_2O$", "$Na(OCa)Ca$"], "answerIndex": 2, "category": "General Knowledge" },
+        { "q": "৪০. কোনটি রক্তের কাজ নয়?", "options": ["বর্জ্য পদার্থ বহন করা", "খাদ্যের সারবস্তু বহন করা", "হরমোন বিতরণ করা", "জারক রস বিতরণ করা"], "answerIndex": 3, "category": "General Knowledge" },
+        { "q": "৪১. 'Pedagogy' শব্দের পরিভাষা-", "options": ["সহশিক্ষা", "শিক্ষানীতি", "শিক্ষাতত্ত্ব", "নারীশিক্ষা"], "answerIndex": 2, "category": "General Knowledge" },
+        { "q": "৪২. 'ব্যাঙের আধুলি' এই বাগধারাটির অন্তর্নিহিত অর্থ হলো-", "options": ["সামান্য ধনে অহংকার", "অসম্ভব ঘটনা", "কৃপণের ধন", "যার কোনো মূল্য নেই"], "answerIndex": 0, "category": "Bangla" },
+        { "q": "৪৩. দুইটি সংখ্যার অনুপাত ৭:৫ এবং তাদের ল.সা.গু ১৪০ হলে সংখ্যা দুইটির গ.সা.গু কত?", "options": ["৬", "৯", "১২", "৪"], "answerIndex": 3, "category": "General Math" },
+        { "q": "৪৪. নিচের ভগ্নাংশগুলির মধ্যে কোনটি বৃহত্তম?", "options": ["$\\frac{14}{17}$", "$\\frac{11}{14}$", "$\\frac{7}{9}$", "$\\frac{10}{11}$"], "answerIndex": 3, "category": "General Math" },
+        { "q": "৪৫. \"Two heads are better than one\" এ প্রবাদ বাক্যটির ভাবার্থ কোনটি?", "options": ["Comprehension", "Correction", "Compromise", "Consultation"], "answerIndex": 3, "category": "English" },
+        { "q": "৪৬. Synonym of \"defraud\" is-", "options": ["Cheat", "Debunk", "Defray", "Honest"], "answerIndex": 0, "category": "English" },
+        { "q": "৪৭. \"To be, or not to be: that is the question.\" - উদ্ধৃতিটি কার?", "options": ["Hamlet", "Macbeth", "King Lear", "Othello"], "answerIndex": 0, "category": "English" },
+        { "q": "৪৮. 'পথ চলার খরচ' কথাটির সংক্ষিপ্তরূপ-", "options": ["খোরাকি", "হাত খরচ", "পাথেয়", "পার্থিব"], "answerIndex": 2, "category": "Bangla" },
+        { "q": "৪৯. বাংলা মুদ্রণযন্ত্র প্রথম কোথায় প্রতিষ্ঠিত হয়?", "options": ["চন্দননগরে", "ঢাকায়", "কলকাতায়", "হুগলিতে"], "answerIndex": 3, "category": "General Knowledge" },
+        { "q": "৫০. শহীদ বুদ্ধিজীবী দিবস-", "options": ["১৪ ডিসেম্বর", "১৬ ডিসেম্বর", "২৬ মার্চ", "২১ ফেব্রুয়ারি"], "answerIndex": 0, "category": "General Knowledge" },
+        { "q": "৫১. বাংলাদেশের সরকার ব্যবস্থা-", "options": ["রাষ্ট্রপতি শাসিত", "সামরিক শাসিত", "সংসদীয়", "একনায়কতান্ত্রিক"], "answerIndex": 2, "category": "General Knowledge" },
+        { "q": "৫২. শেখ আবদুর রহিম কর্তৃক প্রকাশিত নয় এমন পত্রিকার নাম-", "options": ["মিহির", "হাফেজ", "সুধাকর", "কোহিনুর"], "answerIndex": 3, "category": "Bangla" },
+        { "q": "৫৩. পৃথিবীর অক্ষাংশ ও দ্রাঘিমাংশ ব্যবহার করা হয়-", "options": ["সময় নির্ধারণে", "দূরত্ব মাপতে", "স্থান নির্ণয়ে", "তাপমাত্রা জানতে"], "answerIndex": 2, "category": "General Knowledge" },
+        { "q": "৫৪. সংশোধিত অধ্যাদেশ ২০২৫ অনুসারে নিষিদ্ধ স্থানে তামাক বিক্রি করলে সর্বোচ্চ শাস্তি কী?", "options": ["১০০ টাকা জরিমানা", "১০০০ টাকা জরিমানা", "৩০০০ টাকা জরিমানা", "৫০০০ টাকা জরিমানা"], "answerIndex": 3, "category": "General Knowledge" },
+        { "q": "৫৫. জেলে জীবনকেন্দ্রিক উপন্যাস কোনটি?", "options": ["গঙ্গা", "পুতুলনাচের ইতিকথা", "হাঁসুলী বাঁকের উপকথা", "গৃহদাহ"], "answerIndex": 0, "category": "Bangla" },
+        { "q": "৫৬. 'সনাতন পাঠক' কোন সাহিত্যিকের ছদ্মনাম?", "options": ["সমরেশ বসু", "শীর্ষেন্দু মুখোপাধ্যায়", "সুনীল গঙ্গোপাধ্যায়", "প্রেমেন্দ্র মিত্র"], "answerIndex": 2, "category": "Bangla" },
+        { "q": "৫৭. 'সরল' শব্দের বিপরীতার্থক নয় নিচের কোনটি?", "options": ["কুটিল", "জটিল", "বক্র", "গরল"], "answerIndex": 3, "category": "Bangla" },
+        { "q": "৫৮. মীর মশাররফ হোসেনের কোন গ্রন্থের উপজীব্য হিন্দু-মুসলমানের বিরোধ?", "options": ["গো-জীবন", "ইসলামের জয়", "এর উপায় কী", "বসন্তকুমারী নাটক"], "answerIndex": 0, "category": "Bangla" },
+        { "q": "৫৯. 'শেষের কবিতা' রবীন্দ্রনাথ রচিত-", "options": ["কবিতার নাম", "গল্প সংকলনের নাম", "উপন্যাসের নাম", "কাব্য সংকলনের নাম"], "answerIndex": 2, "category": "Bangla" },
+        { "q": "৬০. \"মোদের গরব মোদের আশা আ মরি বাংলা ভাষা।\" - চরণটি কার?", "options": ["রামনিধি গুপ্ত", "রবীন্দ্রনাথ ঠাকুর", "অতুলপ্রসাদ সেন", "সত্যেন্দ্রনাথ দত্ত"], "answerIndex": 2, "category": "Bangla" },
+        { "q": "৬১. 'Education is enlightening.' Here 'enlightening' is-", "options": ["Noun", "Adjective", "Gerund", "Adverb"], "answerIndex": 1, "category": "English" },
+        { "q": "৬২. What is the Bengali meaning of 'time is up'?", "options": ["সময়সীমা", "মূল্যহীন", "সময় আছে", "সময় শেষ"], "answerIndex": 3, "category": "English" },
+        { "q": "৬৩. It is 11 am now. The sun ... in the eastern sky.", "options": ["shines", "is shining", "has been shining", "had been shining"], "answerIndex": 1, "category": "English" },
+        { "q": "৬৪. ১০ জন পুরুষ দিনে ৬ ঘণ্টা কাজ করে একটি কাজ ১৪ দিনে শেষ করতে পারে। একই কাজ ১০ দিনে শেষ করতে ১২ জন পুরুষকে দিনে কত ঘণ্টা কাজ করতে হবে?", "options": ["৬ ঘণ্টা", "৭ ঘণ্টা", "৮ ঘণ্টা", "৯ ঘণ্টা"], "answerIndex": 1, "category": "General Math" },
+        { "q": "৬৫. $x + \\frac{1}{x} = \\sqrt{3}$ হলে, $x^2 + \\frac{1}{x^2}$ এর মান কত?", "options": ["0", "$\\sqrt{3}$", "$3\\sqrt{3}$", "1"], "answerIndex": 3, "category": "General Math" },
+        { "q": "৬৬. Which Sentence is correct?", "options": ["One of my friend been sick", "One of my friends is sick", "One of my friend is sick", "One of my friends are sick"], "answerIndex": 1, "category": "English" },
+        { "q": "৬৭. It is necessary that he ... the meeting.", "options": ["joins", "should join", "join", "must join"], "answerIndex": 2, "category": "English" },
+        { "q": "৬৮. $3x^3 + 2x^2 - 21x - 20$ রাশিটির একটি উৎপাদক হচ্ছে-", "options": ["$x + 2$", "$x + 1$", "$x - 1$", "$x - 2$"], "answerIndex": 1, "category": "General Math" },
+        { "q": "৬৯. একটি সংখ্যা ৫৬০ থেকে যত কম ৩৮০ থেকে তার সাড়ে তিনগুণ বেশি। সংখ্যাটি কত?", "options": ["৪৫০", "৪৭০", "৫২০", "৫০০"], "answerIndex": 2, "category": "General Math" },
+        { "q": "৭০. কোনো আসল ৩ বছরে সুদে আসলে ৪৬০ টাকা এবং ৫ বছরে সুদে আসলে ৫০০ টাকা হলে শতকরা সুদের হার কত?", "options": ["৫%", "৭%", "৮%", "১০%"], "answerIndex": 0, "category": "General Math" },
+        { "q": "৭১. Choose the correct sentence-", "options": ["A new cabinet has been sworn in in Dhaka.", "A new cabinet has been sworn in Dhaka.", "A new cabinet has been sworn by in Dhaka.", "A new cabinet has sworn in Dhaka."], "answerIndex": 0, "category": "English" },
+        { "q": "৭২. \"All the world's a stage\" is a line from-", "options": ["As You Like It", "Twelfth Night", "Macbeth", "King Lear"], "answerIndex": 0, "category": "English" },
+        { "q": "৭৩. \"It was the best of times, it was the worst of times.\" - Quotation by?", "options": ["Dickens", "Orwell", "Austen", "Shakespeare"], "answerIndex": 0, "category": "English" },
+        { "q": "৭৪. Bawm জনগোষ্ঠী বাংলাদেশে কোন ধর্মের অনুসারী?", "options": ["ইসলাম", "হিন্দু", "খ্রিষ্টান", "বৌদ্ধ"], "answerIndex": 2, "category": "General Knowledge" },
+        { "q": "৭৫. UNICEF-এর সদর দপ্তর কোথায়?", "options": ["নিউইয়র্ক", "জেনেভা", "প্যারিস", "রোম"], "answerIndex": 0, "category": "General Knowledge" },
+        { "q": "৭৬. NATO মূলত কোন জোট?", "options": ["অর্থনৈতিক", "সামরিক", "সাংস্কৃতিক", "মানবাধিকার"], "answerIndex": 1, "category": "General Knowledge" },
+        { "q": "৭৭. বিশ্ব পরিবেশ দিবস-", "options": ["৫ জুন", "২১ মার্চ", "১৬ সেপ্টেম্বর", "২২ এপ্রিল"], "answerIndex": 0, "category": "General Knowledge" },
+        { "q": "৭৮. Tragedy কী?", "options": ["Catastrophic play", "Popular proverb", "Happy ending play", "Symbolic novel"], "answerIndex": 0, "category": "English" },
+        { "q": "৭৯. Which one is present Perfect Tense?", "options": ["I walk", "I am walking", "I was walking", "I have walked"], "answerIndex": 3, "category": "English" },
+        { "q": "৮০. He is so intelligent student that the teachers praise him.", "options": ["a", "an", "the", "no article"], "answerIndex": 1, "category": "English" },
+        { "q": "৮১. বর্গের পরিসীমা ২৪ সে.মি. এবং আয়তক্ষেত্রের প্রস্থ ৪ সে.মি. হলে, আয়তক্ষেত্রের পরিসীমা কত?", "options": ["১৬ সে.মি.", "২০ সে.মি.", "২৪ সে.মি.", "২৬ সে.মি."], "answerIndex": 3, "category": "General Math" },
+        { "q": "৮২. দুটি ত্রিভুজের মধ্যে কোন উপাদানগুলো সমান সত্ত্বেও ত্রিভুজ সর্বসম হবে না?", "options": ["দুটি বাহু ও কোণ", "দুই কোণ ও বাহু", "তিন কোণ", "তিন বাহু"], "answerIndex": 2, "category": "General Math" },
+        { "q": "৮৩. কোন রঙের বস্তুর তাপ শোষণ ক্ষমতা কম?", "options": ["কালো", "বেগুনি", "সাদা", "হলুদ"], "answerIndex": 2, "category": "General Knowledge" },
+        { "q": "৮৪. Learning is rewarding. Here 'rewarding' is-", "options": ["Participle", "Gerund", "Main verb", "Finite verb"], "answerIndex": 0, "category": "English" },
+        { "q": "৮৫. \"Excuse me, sir.\" indirect speech-", "options": ["begged him to excuse", "said to excuse", "told him to pardon", "told him to excuse"], "answerIndex": 0, "category": "English" },
+        { "q": "৮৬. \"জুলাই শহিদ দিবস\" কবে ঘোষণা করা হয়?", "options": ["১১ জুলাই", "৮ জুলাই", "১৬ জুলাই", "৩৬ জুলাই"], "answerIndex": 3, "category": "General Knowledge" },
+        { "q": "৮৭. \"July Martyrs' Day\" সরকারি গেজেট কত তারিখে?", "options": ["২ জুলাই", "৫ আগস্ট", "৫ আগস্ট, ২০২৫", "১৬ আগস্ট"], "answerIndex": 2, "category": "General Knowledge" },
+        { "q": "৮৮. বাংলাদেশের রেমিটেন্স GDP-এর কত অংশ?", "options": ["১%", "৩-৪%", "৬-৭%", "১০-১২%"], "answerIndex": 2, "category": "General Knowledge" },
+        { "q": "৮৯. কম্পিউটারের \"GPU\" মূলত ব্যবহার হয়-", "options": ["গতি বৃদ্ধিতে", "গ্রাফিক্স প্রক্রিয়াকরণে", "ডেটা সংরক্ষণে", "নেটওয়ার্কে"], "answerIndex": 1, "category": "General Knowledge" },
+        { "q": "৯০. ২০২৫ সালে বাংলাদেশে জনপ্রিয় সোশ্যাল মিডিয়া কোনটি?", "options": ["Twitter", "Facebook", "Instagram", "Tik Tok"], "answerIndex": 1, "category": "General Knowledge" }
+    ];
+
+    let timer;
+    let startTimestamp;
+
+    function startTimer() {
+        let timeLeft = examDurationMinutes * 60;
+        startTimestamp = new Date();
+        timer = setInterval(() => {
+            timeLeft--;
+            let min = Math.floor(timeLeft / 60);
+            let sec = timeLeft % 60;
+            document.getElementById('time-left').textContent = `${min}:${sec < 10 ? '0' : ''}${sec}`;
+            if (timeLeft <= 0) { clearInterval(timer); submitQuiz(); }
+        }, 1000);
+    }
+
+    function loadQuiz() {
+        const form = document.getElementById('quiz-form');
+        questions.forEach((q, i) => {
+            const div = document.createElement('div');
+            div.className = 'question-box';
+            div.id = `q-box-${i}`;
+            div.innerHTML = `<div class="question-text">${q.q}</div>`;
+            const optDiv = document.createElement('div');
+            optDiv.className = 'options';
+            q.options.forEach((opt, oi) => {
+                optDiv.innerHTML += `<label id="label-${i}-${oi}"><input type="radio" name="q${i}" value="${oi}"> ${opt}</label>`;
+            });
+            div.appendChild(optDiv);
+            form.appendChild(div);
+        });
+        
+        // Initial typesetting for math symbols
+        if (window.MathJax) {
+            MathJax.typesetPromise();
+        }
+        startTimer();
+    }
+
+    async function submitQuiz() {
+        const name = document.getElementById('name').value.trim();
+        const roll = document.getElementById('roll').value.trim();
+        const district = document.getElementById('district').value.trim();
+
+        if(!name || !roll || !district) { alert("দয়া করে নাম, রোল এবং জেলা লিখুন!"); return; }
+
+        clearInterval(timer);
+        const timeDiff = Math.floor((new Date() - startTimestamp) / 1000);
+        const timeStr = `${Math.floor(timeDiff/60)} মিনিট ${timeDiff%60} সেকেন্ড`;
+
+        let score = 0;
+        let catScore = { "Bangla": 0, "English": 0, "General Math": 0, "General Knowledge": 0 };
+        let catTotal = { "Bangla": 0, "English": 0, "General Math": 0, "General Knowledge": 0 };
+
+        questions.forEach((q, i) => {
+            catTotal[q.category]++;
+            const selected = document.querySelector(`input[name="q${i}"]:checked`);
+            document.getElementById(`label-${i}-${q.answerIndex}`).classList.add('correct-option');
+
+            const fb = document.createElement('div');
+            fb.className = 'feedback';
+
+            if(selected) {
+                if(parseInt(selected.value) === q.answerIndex) {
+                    score++; catScore[q.category]++;
+                    fb.innerHTML = "✅ সঠিক উত্তর।"; fb.classList.add('correct');
+                } else {
+                    document.getElementById(`label-${i}-${selected.value}`).classList.add('wrong-selection');
+                    fb.innerHTML = `❌ ভুল উত্তর! সঠিক: ${q.options[q.answerIndex]}`; fb.classList.add('wrong');
+                }
+            } else {
+                fb.innerHTML = `⚠️ উত্তর দেওয়া হয়নি। সঠিক: ${q.options[q.answerIndex]}`; fb.classList.add('wrong');
+            }
+            document.getElementById(`q-box-${i}`).appendChild(fb);
+        });
+
+        const meritVal = Math.round((score / questions.length) * 100);
+
+        // SEND DATA TO GOOGLE SHEET
+        fetch(googleSheetUrl, {
+            method: "POST", mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, roll, district, score, time: timeStr, merit: meritVal + "%" })
+        });
+
+        const resBox = document.getElementById('result-box');
+        resBox.style.display = 'block';
+        resBox.innerHTML = `
+            <h2>অভিনন্দন, পরীক্ষা শেষ!</h2>
+            <p>পরীক্ষার্থী: <b>${name}</b> | রোল: <b>${roll}</b></p>
+            <div class="score-circle">${score} / ${questions.length}</div>
+            <p>মেরিট স্কোর: ${meritVal}% | সময় লেগেছে: ${timeStr}</p>
+            <div class="cat-res">
+                <b>📊 বিষয়ভিত্তিক ফলাফল:</b><br>
+                বাংলা: ${catScore['Bangla']}/${catTotal['Bangla']}<br>
+                ইংরেজি: ${catScore['English']}/${catTotal['English']}<br>
+                সাধারণ গণিত: ${catScore['General Math']}/${catTotal['General Math']}<br>
+                সাধারণ জ্ঞান: ${catScore['General Knowledge']}/${catTotal['General Knowledge']}
+            </div>
+        `;
+
+        document.getElementById('submit-btn').style.display = 'none';
+        document.getElementById('restart-btn').style.display = 'block';
+        window.scrollTo(0,0);
+        
+        // Re-run MathJax for the results/feedback section
+        if (window.MathJax) {
+            MathJax.typesetPromise();
+        }
+    }
+
+    window.onload = loadQuiz;
+</script>
+
+</body>
+</html>
